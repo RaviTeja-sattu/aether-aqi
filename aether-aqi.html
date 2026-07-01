@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER-AQI — Reconstructing India's Air, Hour by Hour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151c;
+    --bg-raised:#181c25;
+    --haze-amber:#e8935b;
+    --haze-coral:#d9736a;
+    --aqi-green:#6fcf97;
+    --aqi-yellow:#f2c94c;
+    --aqi-orange:#f2994a;
+    --aqi-red:#eb5757;
+    --aqi-purple:#9b6bd6;
+    --aqi-maroon:#8a3b2f;
+    --text:#f5f1ea;
+    --text-dim:#9ca3af;
+    --text-faint:#5b616e;
+    --line:#262b36;
+    --radius:10px;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--font-body);
+    line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none;}
+  ::selection{background:var(--haze-amber);color:#12151c;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 32px;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    background:rgba(18,21,28,0.82);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1120px;margin:0 auto;padding:16px 32px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .nav-mark{
+    font-family:var(--font-display);font-weight:700;font-size:17px;
+    letter-spacing:0.02em;display:flex;align-items:center;gap:9px;
+  }
+  .nav-mark .dot-strip{display:flex;gap:2px;}
+  .nav-mark .dot-strip span{width:5px;height:14px;border-radius:1px;}
+  .nav-links{display:flex;gap:26px;font-size:13.5px;color:var(--text-dim);}
+  .nav-links a{transition:color .15s;}
+  .nav-links a:hover{color:var(--text);}
+  .nav-tag{
+    font-family:var(--font-mono);font-size:11px;color:var(--text-faint);
+    border:1px solid var(--line);padding:4px 9px;border-radius:20px;
+  }
+  @media(max-width:760px){ .nav-links{display:none;} }
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;padding:168px 0 0;overflow:hidden;}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:0.06em;
+    color:var(--haze-amber);text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:8px;margin-bottom:22px;
+  }
+  .eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--haze-amber);
+    box-shadow:0 0 0 3px rgba(232,147,91,0.18);}
+
+  h1.headline{
+    font-family:var(--font-display);font-weight:700;
+    font-size:clamp(38px, 6vw, 74px);line-height:1.03;letter-spacing:-0.02em;max-width:830px;
+  }
+  h1.headline .accent{
+    background:linear-gradient(90deg, var(--haze-amber), var(--aqi-red) 55%, var(--aqi-purple));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{margin-top:26px;font-size:17px;color:var(--text-dim);max-width:640px;}
+  .sub b{color:var(--text);font-weight:600;}
+  .sub-fine{margin-top:12px;font-size:13.5px;color:var(--text-faint);max-width:600px;}
+
+  .cta-row{display:flex;gap:14px;margin-top:38px;flex-wrap:wrap;}
+  .btn{
+    font-family:var(--font-body);font-weight:600;font-size:14.5px;
+    padding:13px 22px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .btn-primary{background:var(--text);color:var(--bg);}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(232,147,91,0.18);}
+  .btn-outline{border:1px solid var(--line);color:var(--text);}
+  .btn-outline:hover{border-color:var(--text-dim);transform:translateY(-1px);}
+
+  /* signature element: AQI haze-band horizon */
+  .haze-band{margin-top:86px;height:120px;position:relative;display:flex;filter:blur(0.3px);}
+  .haze-band .layer{flex:1;align-self:flex-end;opacity:0.9;animation:drift 9s ease-in-out infinite;}
+  .haze-band .layer:nth-child(1){background:linear-gradient(180deg, transparent, var(--aqi-green));height:38%;animation-delay:0s;}
+  .haze-band .layer:nth-child(2){background:linear-gradient(180deg, transparent, var(--aqi-yellow));height:56%;animation-delay:.4s;}
+  .haze-band .layer:nth-child(3){background:linear-gradient(180deg, transparent, var(--aqi-orange));height:72%;animation-delay:.8s;}
+  .haze-band .layer:nth-child(4){background:linear-gradient(180deg, transparent, var(--aqi-red));height:100%;animation-delay:1.2s;}
+  .haze-band .layer:nth-child(5){background:linear-gradient(180deg, transparent, var(--aqi-orange));height:66%;animation-delay:1.6s;}
+  .haze-band .layer:nth-child(6){background:linear-gradient(180deg, transparent, var(--aqi-red));height:84%;animation-delay:2s;}
+  .haze-band .layer:nth-child(7){background:linear-gradient(180deg, transparent, var(--aqi-purple));height:50%;animation-delay:2.4s;}
+  .haze-band .layer:nth-child(8){background:linear-gradient(180deg, transparent, var(--aqi-maroon));height:30%;animation-delay:2.8s;}
+  .haze-band .layer:nth-child(9){background:linear-gradient(180deg, transparent, var(--aqi-red));height:64%;animation-delay:.6s;}
+  .haze-band .layer:nth-child(10){background:linear-gradient(180deg, transparent, var(--aqi-yellow));height:46%;animation-delay:1s;}
+  .haze-band .layer:nth-child(11){background:linear-gradient(180deg, transparent, var(--aqi-green));height:34%;animation-delay:1.4s;}
+  .haze-band .layer:nth-child(12){background:linear-gradient(180deg, transparent, var(--aqi-orange));height:70%;animation-delay:1.8s;}
+  @keyframes drift{0%,100%{transform:scaleY(1);}50%{transform:scaleY(0.82);}}
+  .haze-caption{display:flex;justify-content:space-between;font-family:var(--font-mono);
+    font-size:10.5px;color:var(--text-faint);margin-top:10px;letter-spacing:0.03em;}
+  @media (prefers-reduced-motion: reduce){ .haze-band .layer{animation:none;} }
+
+  /* ---------- STAT STRIP ---------- */
+  .stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:60px;}
+  .stats-inner{max-width:1120px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:repeat(4,1fr);}
+  .stat{padding:26px 20px;border-left:1px solid var(--line);}
+  .stat:first-child{border-left:none;padding-left:0;}
+  .stat .num{font-family:var(--font-display);font-weight:700;font-size:28px;}
+  .stat .label{font-family:var(--font-mono);font-size:10.5px;color:var(--text-dim);margin-top:4px;letter-spacing:0.02em;}
+  @media(max-width:760px){
+    .stats-inner{grid-template-columns:repeat(2,1fr);}
+    .stat{border-left:none;border-top:1px solid var(--line);padding:20px 0;}
+    .stat:nth-child(odd){padding-right:16px;}
+    .stat:nth-child(even){padding-left:16px;border-left:1px solid var(--line);}
+  }
+
+  /* ---------- SECTION SHARED ---------- */
+  section{padding:110px 0;}
+  .section-head{max-width:660px;margin-bottom:56px;}
+  .section-tag{
+    font-family:var(--font-mono);font-size:11.5px;color:var(--haze-amber);
+    text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;display:block;
+  }
+  h2{font-family:var(--font-display);font-weight:600;font-size:clamp(26px,3.4vw,38px);letter-spacing:-0.01em;}
+  .section-desc{color:var(--text-dim);margin-top:14px;font-size:15.5px;}
+
+  /* ---------- PIPELINE ---------- */
+  .pipeline{display:flex;flex-direction:column;border-top:1px solid var(--line);}
+  .stage{display:grid;grid-template-columns:90px 1fr;padding:32px 0;border-bottom:1px solid var(--line);gap:24px;}
+  .stage .idx{font-family:var(--font-mono);font-size:13px;color:var(--text-faint);padding-top:4px;}
+  .stage .idx .bar{display:block;width:26px;height:3px;border-radius:2px;margin-top:10px;}
+  .stage:nth-child(1) .bar{background:var(--aqi-green);}
+  .stage:nth-child(2) .bar{background:var(--aqi-yellow);}
+  .stage:nth-child(3) .bar{background:var(--aqi-orange);}
+  .stage:nth-child(4) .bar{background:var(--aqi-red);}
+  .stage:nth-child(5) .bar{background:var(--aqi-purple);}
+  .stage:nth-child(6) .bar{background:var(--aqi-maroon);}
+  .stage h3{font-family:var(--font-display);font-weight:600;font-size:18.5px;margin-bottom:8px;}
+  .stage p{color:var(--text-dim);font-size:14px;max-width:680px;}
+  .stage p b{color:var(--text);font-weight:500;}
+
+  /* ---------- RESULTS ---------- */
+  .result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .result-card{background:var(--bg);padding:28px 24px;}
+  .result-card .rnum{font-family:var(--font-display);font-weight:700;font-size:26px;}
+  .result-card .rnum.up{color:var(--aqi-green);}
+  .result-card .rlabel{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;}
+  @media(max-width:900px){ .result-grid{grid-template-columns:repeat(2,1fr);} }
+  .result-note{margin-top:22px;font-size:14px;color:var(--text-dim);max-width:760px;}
+  .result-note b{color:var(--text);font-weight:500;}
+
+  /* ---------- DEMO VIDEO ---------- */
+  .video-frame{position:relative;border-radius:var(--radius);overflow:hidden;
+    border:1px solid var(--line);background:var(--bg-raised);aspect-ratio:16/9;}
+  .video-frame iframe{width:100%;height:100%;border:0;display:block;}
+  .video-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;color:var(--text-faint);
+    font-family:var(--font-mono);font-size:12.5px;text-align:center;padding:20px;}
+  .play-ring{width:56px;height:56px;border-radius:50%;border:1.5px solid var(--text-faint);
+    display:flex;align-items:center;justify-content:center;}
+
+  /* ---------- TEST BUILD ---------- */
+  .test-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-raised);
+    padding:32px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;}
+  .test-status{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);
+    font-size:12px;color:var(--aqi-yellow);background:rgba(242,201,76,0.08);
+    border:1px solid rgba(242,201,76,0.25);padding:5px 11px;border-radius:20px;margin-bottom:14px;}
+  .test-status .blip{width:6px;height:6px;border-radius:50%;background:var(--aqi-yellow);animation:blip 1.6s ease-in-out infinite;}
+  @keyframes blip{0%,100%{opacity:1;}50%{opacity:0.25;}}
+  .test-card h3{font-family:var(--font-display);font-size:20px;font-weight:600;margin-bottom:6px;}
+  .test-card p{color:var(--text-dim);font-size:14px;max-width:460px;}
+
+  /* ---------- DOCS ---------- */
+  .doc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .doc-card{background:var(--bg);padding:26px;transition:background .15s;display:flex;flex-direction:column;gap:10px;}
+  .doc-card:hover{background:var(--bg-raised);}
+  .doc-card .doc-icon{color:var(--text-faint);}
+  .doc-card h4{font-family:var(--font-display);font-size:15.5px;font-weight:600;}
+  .doc-card p{font-size:13px;color:var(--text-dim);}
+  .doc-card .doc-note{font-family:var(--font-mono);font-size:10.5px;color:var(--text-faint);
+    letter-spacing:0.03em;text-transform:uppercase;}
+  .doc-card .doc-note.live{color:var(--aqi-green);}
+  @media(max-width:760px){ .doc-grid{grid-template-columns:1fr;} }
+
+  /* ---------- FEASIBILITY STRIP ---------- */
+  .feas{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .feas-card{background:var(--bg);padding:30px;}
+  .feas-card .fnum{font-family:var(--font-display);font-weight:700;font-size:32px;}
+  .feas-card .flabel{font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);margin-top:8px;}
+  @media(max-width:700px){ .feas{grid-template-columns:1fr;} }
+
+  /* ---------- FOOTER ---------- */
+  footer{border-top:1px solid var(--line);padding:56px 0 40px;}
+  .footer-inner{display:flex;justify-content:space-between;flex-wrap:wrap;gap:30px;}
+  footer .nav-mark{margin-bottom:10px;}
+  footer .foot-desc{color:var(--text-faint);font-size:13px;max-width:340px;}
+  .foot-col h5{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;
+    letter-spacing:0.06em;color:var(--text-faint);margin-bottom:12px;}
+  .foot-col div{font-size:13.5px;color:var(--text-dim);margin-bottom:6px;}
+  .foot-bottom{margin-top:50px;padding-top:22px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+
+  :focus-visible{outline:2px solid var(--haze-amber);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-mark">
+      <span class="dot-strip">
+        <span style="background:var(--aqi-green)"></span>
+        <span style="background:var(--aqi-yellow)"></span>
+        <span style="background:var(--aqi-orange)"></span>
+        <span style="background:var(--aqi-red)"></span>
+      </span>
+      AETHER&nbsp;·&nbsp;AQI
+    </div>
+    <div class="nav-links">
+      <a href="#pipeline">Pipeline</a>
+      <a href="#results">Results</a>
+      <a href="#demo">Demo</a>
+      <a href="#test">PavanAI</a>
+      <a href="#docs">Docs</a>
+      <a href="#team">Team</a>
+    </div>
+    <div class="nav-tag">BAH 2026</div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Bharatiya Antariksh Hackathon 2026 · Team Curiosity — From Apes to Space</span>
+    <h1 class="headline">Reconstructing India's air, <span class="accent">hour by hour.</span></h1>
+    <p class="sub">
+      From a <b>single daily satellite snapshot</b>, AETHER-AQI reconstructs nationwide
+      <b>hourly (24×7) Surface AQI</b> across all six CPCB-regulated pollutants — PM2.5, PM10, NO2, SO2, CO, O3 —
+      using a regime-adaptive, physics-informed ensemble that learns region- and season-specific
+      atmospheric behaviour, validated against real CPCB ground truth under both chronological and
+      spatial holdouts.
+    </p>
+    <p class="sub-fine">Objective 1 · Development of Surface AQI over India using Satellite Data</p>
+    <div class="cta-row">
+      <a href="#demo" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>
+        Watch the demo
+      </a>
+      <a href="#test" class="btn btn-outline">Launch PavanAI test build →</a>
+    </div>
+
+    <!-- signature element: AQI haze-band horizon -->
+    <div class="haze-band" aria-hidden="true">
+      <div class="layer"></div><div class="layer"></div><div class="layer"></div>
+      <div class="layer"></div><div class="layer"></div><div class="layer"></div>
+      <div class="layer"></div><div class="layer"></div><div class="layer"></div>
+      <div class="layer"></div><div class="layer"></div><div class="layer"></div>
+    </div>
+    <div class="haze-caption">
+      <span>GOOD</span><span>MODERATE</span><span>POOR</span><span>SEVERE</span>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stats-inner">
+    <div class="stat"><div class="num">478</div><div class="label">CPCB STATIONS · 3.0M ROWS (2013–2025)</div></div>
+    <div class="stat"><div class="num">7</div><div class="label">ATMOSPHERIC REGIME CLUSTERS</div></div>
+    <div class="stat"><div class="num">138</div><div class="label">TRAINED PER-HOUR ML MODELS</div></div>
+    <div class="stat"><div class="num">6</div><div class="label">CPCB POLLUTANTS MODELLED</div></div>
+  </div>
+</div>
+
+<!-- ================= PIPELINE ================= -->
+<section id="pipeline">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">How it works</span>
+      <h2>One satellite pass, six stages, a full day.</h2>
+      <p class="section-desc">India's afternoon TROPOMI overpass gives one trustworthy reading a day. Everything downstream exists to turn that single hour-13 anchor into a physically consistent 24-hour picture.</p>
+    </div>
+
+    <div class="pipeline">
+      <div class="stage">
+        <div class="idx">01<span class="bar"></span></div>
+        <div>
+          <h3>Data & feature engineering</h3>
+          <p>Two merged CPCB × ERA5 master tables — <b>3.0M rows / 478 stations (2013–2025)</b> and a <b>1.49M-row / 477-station TROPOMI-joined table (2019–2025)</b> — feed a 43–55 column feature set per pollutant: log transforms, harmonic time encodings, wind/humidity terms, and the <b>hour-13 satellite anchor</b> with a boundary-layer-height (BLH) physics baseline.</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="idx">02<span class="bar"></span></div>
+        <div>
+          <h3>Regime-adaptive clustering</h3>
+          <p>Every station is assigned to one of <b>7 pre-trained atmospheric regimes</b> using six criteria — environmental characteristics, Köppen climatic zone, elevation, season, population density, and meteorology — so a coastal city and a Himalayan town are never forced through the same physics.</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="idx">03<span class="bar"></span></div>
+        <div>
+          <h3>Hourly ML ensemble</h3>
+          <p><b>138 trained per-hour models</b> (LightGBM, HistGBM, XGBoost, Random Forest, Extra Trees) — a "winners ensemble" keeping whichever algorithm wins each (pollutant, hour) slot — refined further by bias recalibration and targeted retraining of the 36 weakest slots.</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="idx">04<span class="bar"></span></div>
+        <div>
+          <h3>Physics-based diurnal equations</h3>
+          <p>Seven fitting methods compared per cluster against each regime's 24-point median profile — <b>Fourier series, pollutant-specific NLS physics forms, seasonal stratification, per-station averaging</b> — encoding the well-known rise and fall of pollution across a real day.</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="idx">05<span class="bar"></span></div>
+        <div>
+          <h3>Regime-adaptive fusion</h3>
+          <p>A <b>LightGBM meta-model</b> predicts a blend weight α across <b>4,464 (pollutant, cluster, season, hour) groups</b>. Final Prediction = α·ML + (1−α)·Physics — chosen production framework "F5" out of five candidates benchmarked head-to-head.</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="idx">06<span class="bar"></span></div>
+        <div>
+          <h3>AQI computation & validation</h3>
+          <p>Fused concentrations run through CPCB's National AQI breakpoint tables. Checked two ways — <b>chronological holdout</b> and a <b>15% spatial holdout of 71 stations never seen in training</b> — with spatial R² (0.896) edging out temporal R² (0.872).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section id="results">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Why the hybrid wins</span>
+      <h2>The blend never costs accuracy — and often buys a lot of it.</h2>
+      <p class="section-desc">F5 (the regime-adaptive blend) matches or beats raw ML on every pollutant, on both holdouts, while comfortably beating physics-only everywhere.</p>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="rnum up">−25.1%</div>
+        <div class="rlabel">CO MAE REDUCTION vs. RAW ML<br>(TEMPORAL HOLDOUT; −28.7% SPATIAL)</div>
+      </div>
+      <div class="result-card">
+        <div class="rnum up">−9.4%</div>
+        <div class="rlabel">NO2 MAE REDUCTION vs. RAW ML<br>(TEMPORAL HOLDOUT; −10.1% SPATIAL)</div>
+      </div>
+      <div class="result-card">
+        <div class="rnum">0.820</div>
+        <div class="rlabel">OZONE SPATIAL R² — F5 BLEND<br>(vs. 0.086 FOR PHYSICS-ONLY, WHICH FAILS)</div>
+      </div>
+      <div class="result-card">
+        <div class="rnum">0.896</div>
+        <div class="rlabel">OVERALL SPATIAL R² (F5, UNSEEN STATIONS)<br>vs. 0.872 TEMPORAL</div>
+      </div>
+    </div>
+    <p class="result-note">
+      Ozone is where the hybrid pays off most: physics-only nearly fails on unseen stations, but the regime blend
+      recovers essentially all of the ML model's accuracy by learning to down-weight physics specifically for Ozone.
+      PM2.5/PM10 defer almost entirely to ML (learned α ≈ 94%) because the meta-model figured out physics adds
+      little there — <b>without being told to.</b> Because Objective 1's core mission is predicting AQI where no
+      monitor exists, F5 was selected as the production framework specifically because its accuracy holds on
+      unseen locations rather than being inflated by station familiarity.
+    </p>
+  </div>
+</section>
+
+<!-- ================= DEMO ================= -->
+<section id="demo">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Walkthrough</span>
+      <h2>See the pipeline run.</h2>
+      <p class="section-desc">Full demo of the Objective 1 reconstruction pipeline, end to end.</p>
+    </div>
+
+    <div class="video-frame">
+      <!--
+        TODO: paste your YouTube video ID into YT_VIDEO_ID near the bottom
+        of the file — the placeholder below swaps out automatically.
+      -->
+      <div class="video-placeholder" id="video-placeholder">
+        <div class="play-ring">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5z" fill="currentColor"/></svg>
+        </div>
+        <span>DEMO VIDEO — LINK PENDING<br>drop the YouTube ID into YT_VIDEO_ID near the bottom of the file</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TEST BUILD ================= -->
+<section id="test">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Try it</span>
+      <h2>PavanAI — proof of concept.</h2>
+      <p class="section-desc">Deploying the full pipeline to the web takes more time, so the current build runs an interactive dashboard across four test-case dates.</p>
+    </div>
+
+    <div class="test-card">
+      <div>
+        <div class="test-status"><span class="blip"></span>SLOW COLD START — PROOF OF CONCEPT</div>
+        <h3>PavanAI — Hourly Surface AQI from Satellite Data</h3>
+        <p>Explore reconstructed hourly Surface AQI maps for four test-case dates, straight from the Objective 1 pipeline.</p>
+      </div>
+      <!-- TODO: replace href="#" with the PavanAI PoC URL once you have it -->
+      <a href="#" class="btn btn-primary">Launch PavanAI →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DOCS ================= -->
+<section id="docs">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Reference</span>
+      <h2>Docs & writeups.</h2>
+      <p class="section-desc">The technical record behind Objective 1 — decisions, data sources, and cost breakdown.</p>
+    </div>
+
+    <div class="doc-grid">
+      <a href="https://docs.google.com/document/d/1gdQcpiipc4jCXG3obxPh3Z9ng0s6vieLYIZkPUHiAkw/edit?usp=sharing" class="doc-card" target="_blank" rel="noopener">
+        <span class="doc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <h4>Technical Decision Justification</h4>
+        <p>Why an ensemble over a single model, why clustering, why this fusion framework.</p>
+        <span class="doc-note live">Open doc →</span>
+      </a>
+      <a href="https://docs.google.com/document/d/1rAOZ-gTVHuVqGKegJWXb--GdyS74oyiWuUpqFaJ01q0/edit?usp=sharing" class="doc-card" target="_blank" rel="noopener">
+        <span class="doc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <h4>Data Sources Document</h4>
+        <p>Every satellite and reanalysis input — resolution, overpass timing, access portals.</p>
+        <span class="doc-note live">Open doc →</span>
+      </a>
+      <a href="https://docs.google.com/document/d/1iFY7n_EeIVuwc9zVl-S64BEzSF0qK5lvBn2IQJZrM8g/edit?tab=t.0" class="doc-card" target="_blank" rel="noopener">
+        <span class="doc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <h4>Cost Analysis Document</h4>
+        <p>₹0 prototype cost; ₹3.5–4 lakh/year estimated for national-scale deployment.</p>
+        <span class="doc-note live">Open doc →</span>
+      </a>
+      <!-- TODO: add a public link here once the full Objective 1 technical writeup is hosted somewhere shareable -->
+      <a href="#" class="doc-card">
+        <span class="doc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <h4>Objective 1 — Full Technical Document</h4>
+        <p>Architecture, feature families, cluster-by-cluster diurnal equations, full scorecards.</p>
+        <span class="doc-note">Link pending</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEASIBILITY ================= -->
+<section id="feasibility" style="padding-top:0;">
+  <div class="wrap">
+    <div class="feas">
+      <div class="feas-card">
+        <div class="fnum">₹0</div>
+        <div class="flabel">PROTOTYPE COST — OPEN-SOURCE TOOLS, PUBLIC CLOUD, EXISTING ISRO INFRASTRUCTURE, NO PROPRIETARY DATA</div>
+      </div>
+      <div class="feas-card">
+        <div class="fnum">₹3.5–4L</div>
+        <div class="flabel">ESTIMATED / YEAR FOR NATIONAL-SCALE OPERATIONAL DEPLOYMENT</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer id="team">
+  <div class="wrap">
+    <div class="footer-inner">
+      <div>
+        <div class="nav-mark">
+          <span class="dot-strip">
+            <span style="background:var(--aqi-green)"></span>
+            <span style="background:var(--aqi-yellow)"></span>
+            <span style="background:var(--aqi-orange)"></span>
+            <span style="background:var(--aqi-red)"></span>
+          </span>
+          AETHER&nbsp;·&nbsp;AQI
+        </div>
+        <p class="foot-desc">Nationwide hourly Surface AQI reconstruction over India from a single daily satellite pass — built for the Bharatiya Antariksh Hackathon 2026.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Team Curiosity — From Apes to Space</h5>
+        <div>R Krishna Advaith Siddhartha — Team Lead</div>
+        <div>R Yashwanth Reddy</div>
+        <div>S Ravi Teja</div>
+        <div>M Abhinav Reddy</div>
+      </div>
+      <div class="foot-col">
+        <h5>Affiliation</h5>
+        <div>MVSR Engineering College, Hyderabad</div>
+        <div>Problem Statement: Surface AQI & HCHO Hotspots over India using Satellite Data</div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>BHARATIYA ANTARIKSH HACKATHON 2026</span>
+      <span>AETHER-AQI © 2026</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---- fill these in when you have them, everything else wires up automatically ----
+  const YT_VIDEO_ID = "";        // e.g. "dQw4w9WgXcQ"
+  const TEST_BUILD_URL = "";     // e.g. "https://pavanai-poc.streamlit.app"
+
+  if (YT_VIDEO_ID) {
+    const frame = document.getElementById('video-placeholder');
+    frame.outerHTML = `<iframe src="https://www.youtube.com/embed/${YT_VIDEO_ID}" title="AETHER-AQI Demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  }
+
+  if (TEST_BUILD_URL) {
+    document.querySelectorAll('#test a.btn').forEach(el => el.href = TEST_BUILD_URL);
+  }
+</script>
+
+</body>
+</html>
